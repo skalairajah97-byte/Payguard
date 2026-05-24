@@ -3,9 +3,11 @@ from pydantic import BaseModel
 from typing import Optional
 from pydantic import Field 
 import uuid
-
+from fastapi import Header
 
 app = FastAPI()
+idempotency_store = {}
+
 
 class ChargeRequest(BaseModel):
     # your fields go here
@@ -19,9 +21,11 @@ def health_check():
     return {"status": "ok"}
 
 @app.post("/charges", status_code=201)
-def charges(charge: ChargeRequest):
+def charges(charge: ChargeRequest, idempotency_key: Optional[str] = Header(None)):
     id = uuid.uuid4()
-    return {"charge_id": id}
-
-
-
+    if idempotency_key in idempotency_store:
+        return idempotency_store[idempotency_key]
+    else:
+        outcome = {"charge_id": str(id)}
+        idempotency_store[idempotency_key] = outcome
+        return outcome
